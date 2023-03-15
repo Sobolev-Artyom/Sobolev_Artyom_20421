@@ -1,0 +1,44 @@
+
+class Router:
+    def __init__(self):
+        self.buffer = []
+        self.connected = {}
+
+    def link(self, server):
+        self.connected[server.ip] = server
+
+    def unlink(self, server):
+        del self.connected[server.ip]
+
+    def send_data(self, *servers_ip):
+        for s in self.connected:
+            if s in servers_ip:
+                self.connected[s].get_data()
+
+
+
+ip_ad = [1]
+
+
+class Server:
+    def __init__(self):
+        self.ip = ip_ad[-1]
+        ip_ad.append(ip_ad[-1]+1)
+
+    def send_data(self, data):
+        router.buffer = data
+
+    def get_data(self):
+        yield router.buffer
+        router.buffer.clear()
+
+    def get_ip(self):
+        return self.ip
+
+
+class Data:
+    def __init__(self, data, ip):
+        self.data = data
+        self.ip=ip
+
+router = Router()        
