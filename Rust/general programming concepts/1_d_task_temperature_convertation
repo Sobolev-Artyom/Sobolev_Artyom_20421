@@ -1,4 +1,3 @@
-```rust
 use std::io;
 
 fn main() {
@@ -20,4 +19,3 @@ fn main() {
 
     println!("{}°F равно {}°C", fahrenheit, celsius);
 }
-```
