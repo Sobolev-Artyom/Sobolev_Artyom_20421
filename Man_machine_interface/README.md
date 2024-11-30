@@ -113,6 +113,195 @@ npx prisma studio;  http://localhost:5555
 ![image](https://github.com/user-attachments/assets/35a5c879-5236-4633-b344-6dd3afddb628)
 ## Теперь мы имеем заполненную базу данных, с которой мы можем работать. Далее мы поговорим о создании страниц сайта.
 ________
+# Создание страниц сайта
+## Первая(Главная) страница сайта:
+![image](https://github.com/user-attachments/assets/52d177f3-5ff8-4779-89f4-062d38dce9fe)
+### Код для ее создания.
+```rust
+import Link from "next/link";
+
+export default function Home() {
+  return (
+    <div className="grid grid-rows-[20px_1fr_20px]  items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 row-start-2  items-center sm:items-start">
+      <p className = {"items-center font-bold text-3xl italic text-white"}> PostgreSQL.News</p>
+        <Link href="/news" className = {"ml-8 font-bold italic text-white"}>Click to go on news page.</Link>
+
+        <div className="flex gap-4 items-center flex-col sm:flex-row">
+        </div>
+      </main>
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <a
+            className="flex border-1 rounded-lg bg-blue-400 items-center text-white gap-2 hover:underline hover:underline-offset-4"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Click to "Read our docs"
+          </a>
+        <a
+          className="flex border-1 rounded-lg bg-blue-400 items-center gap-2 text-white hover:underline hover:underline-offset-4"
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click to "Learn more"
+        </a>
+        <a
+          className="flex border-1 rounded-lg bg-blue-400 items-center gap-2 text-white hover:underline hover:underline-offset-4"
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click to "See examples"
+        </a>
+        <a
+          className="flex border-1 rounded-lg bg-blue-400 items-center gap-2 text-white hover:underline hover:underline-offset-4"
+          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click to "Go to nextjs.org"
+        </a>
+      </footer>
+    </div>
+  );
+}
+```
+
+## Cтраница с новостями:
+![image](https://github.com/user-attachments/assets/b4ace90d-ccaf-4cd6-8a2c-ff30571935a0)
+### Код для ее создания.
+```rust
+import ComponentNews from "@/app/ui/componentnews";
+import  {getavaliablenews} from "@/app/lib/data"
+
+export default async function Home() {
+  const newsdata = await getavaliablenews();
+
+  
+  return (
+    <div className="grid grid-rows-[20px_1fr_20px] min-h-screen p-8 pb-20 gap-1 sm:p-20 ">
+      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start text-base/6" >
+        <p className = {"object-left-top font-bold text-2xl italic border-1 rounded-lg bg-blue-50"}> You are on news page!</p>
+
+        <ComponentNews newsdata = {newsdata} isnew = {false}/>
+      </main>
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <a
+            className="flex border-1 rounded-lg bg-blue-50 items-center gap-2 hover:underline hover:underline-offset-4"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Click to "Read our docs"
+          </a>
+        <a
+          className="flex items-center gap-2 border-1 rounded-lg bg-blue-50 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click to "Learn more"
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline border-1 rounded-lg bg-blue-50 hover:underline-offset-4"
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click to "See examples"
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline border-1 rounded-lg bg-blue-50 hover:underline-offset-4"
+          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click to "Go to nextjs.org"
+        </a>
+      </footer>
+    </div>
+  );
+}
+
+```
+## Страница с новостью :
+![image](https://github.com/user-attachments/assets/728f9f79-7916-4422-962e-68e6e45698e7)
+### Код для ее создания.
+```rust
+import Link from "next/link";
+import {news} from '@prisma/client';
+
+export default async function ComponentNews({newsdata, isnew} : { newsdata: news[], isnew: boolean}) {
+    return (
+        <div className='grid grid-cols-1 gap-3 p-8 bg-blue-50 rounded-lg '>
+            {newsdata.map((elem) => (
+                <Link href={`/news/${elem.id}`} key = {elem.id} className={'group '}>
+                    <div key = {elem.id} className={"bg-blue  rounded-lg"}>
+                        <div className="flex-col font-bold ml-10 w-80 italic underline rounded-lg">
+                            Now, {elem.title}
+                        </div>
+                        {isnew  && (
+                            <div className="ml-4 italic leading-loose" >
+                                <div className="my-4">
+                                    Date:{elem.date.toDateString()}
+                                </div>
+                                <div className="w-80" >    
+                                    Read it:{elem.text}
+                                </div>
+                                <div className="my-4">
+                                    See it: {elem.image}
+                                </div>
+                            </div>
+                        )}  
+                    </div>
+                </Link>
+            ))}
+        </div>
+    );
+}
+```
+## И также: 
+```rust
+import ComponentNews from "@/app/ui/componentnews";
+import prisma from "@/app/lib/db";
+import { unstable_noStore as nostore } from "next/cache";
+
+export async function getNewsByid(id:number) {
+    nostore();
+    try {
+        console.log('getNewsByid');
+        const data = await prisma.news.findUnique({where:{id}});
+        return data; 
+
+        
+
+    } catch (error){
+        console.error('Database error', error);
+        throw new Error("Failed to fetch news data");
+    }
+    
+ }
+
+export default async function Page({params}: { params: {slug: string} }) {
+    console.log(params);
+    const { slug } = await params
+    const newsdata = await getNewsByid(Number(slug));
+
+    const newsarray = newsdata ? [newsdata] : [];
+
+    return (
+        <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+            <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+                <ComponentNews newsdata = {newsarray} isnew = {true}/>
+            </main>
+        </div>
+    )
+}
+```
+________
+
 
 
 
