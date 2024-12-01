@@ -1,32 +1,40 @@
 services:
-  web:
-    build: .
-    command: npm run dev
-    ports:
-      - "3000:80"
-    depends_on:
-      - db
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: news_pgsql
     environment:
-      DATABASE_URL: postgresql://postgres:1234@db:5432/postgres
+      DATABASE_URL: postgresql://postgres:1234@pgsql_db:5268/postgres?
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - localhost
+    expose:
+      - 3000
 
-  db:
+  localhost:
     image: postgres:13
-    restart: always
+    container_name: pgsql_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5268:5268"
 
   nginx:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
+    image: nginx:latest
+    container_name: nginx_proxy
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
     depends_on:
-      - web
+      - app
 
 volumes:
   pgdata:
