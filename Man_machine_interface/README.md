@@ -368,6 +368,7 @@ volumes:
   pgdata:
 ```
 ## nginx.conf:
+```rust
 events {}
 
 http {
@@ -383,6 +384,7 @@ http {
         }
     }
 }
+```
 
 
 
