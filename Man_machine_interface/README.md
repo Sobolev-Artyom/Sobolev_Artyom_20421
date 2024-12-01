@@ -301,6 +301,88 @@ export default async function Page({params}: { params: {slug: string} }) {
 }
 ```
 ________
+## Dockerfile:
+```rust
+# Первая стадия: сборка приложения
+FROM node:20-alpine
+
+# Рабочая директория
+WORKDIR /app
+
+# Копируем файлы в рабочую директорию
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm install
+
+# Копируем все остальные файлы
+COPY . .
+
+# Открываем порт 3000
+EXPOSE 3000
+
+# Запускаем Nginx
+CMD ["npm","run","dev"]
+```
+## docker-compose.yml:
+```rust
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: news_pgsql
+    environment:
+      DATABASE_URL: postgresql://postgres:1234@pgsql_db:5268/postgres?
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    expose:
+      - 3000
+
+  db:
+    image: postgres:13
+    container_name: pgsql_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5268:5268"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+```
+## nginx.conf:
+events {}
+
+http {
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://app:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
 
 
 
