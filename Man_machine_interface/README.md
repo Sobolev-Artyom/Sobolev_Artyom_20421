@@ -331,41 +331,41 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: news_pgsql
-    environment:
-      DATABASE_URL: postgresql://postgres:1234@pgsql_db:5268/postgres?
-      PORT: 3000
     ports:
       - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://postgres:1234@db:5432/mydb
     depends_on:
       - db
-    expose:
-      - 3000
-
+    command: >
+      sh -c "
+             npx prisma migrate dev --name init &&
+             npx prisma generate &&
+             npm install -D typescript ts-node @types/node &&
+             npx prisma db seed &&
+             npm run dev"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - my_network
   db:
-    image: postgres:13
-    container_name: pgsql_db
+    image: postgres:14
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: postgres
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      POSTGRES_DB: mydb
     ports:
-      - "5268:5268"
-
-  nginx:
-    image: nginx:latest
-    container_name: nginx_proxy
+      - "5432:5432"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-    ports:
-      - "80:80"
-    depends_on:
-      - app
-
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - my_network
+networks:
+  my_network:
+    external: false
 volumes:
-  pgdata:
+  postgres_data:
 ```
 ## nginx.conf:
 ```rust
