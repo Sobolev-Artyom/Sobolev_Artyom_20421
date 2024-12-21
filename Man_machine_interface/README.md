@@ -303,26 +303,26 @@ export default async function Page({params}: { params: {slug: string} }) {
 ________
 ## Dockerfile:
 ```rust
-# Первая стадия: сборка приложения
-FROM node:20-alpine
+FROM node:18-alpine
 
-# Рабочая директория
 WORKDIR /app
+RUN apk update && apk add openssl
+COPY package.json package-lock.json ./
+COPY app ./app
+COPY public ./public
+COPY next.config.ts .
+COPY tsconfig.json .
+COPY tailwind.config.ts .
+COPY postcss.config.mjs .
+COPY prisma ./prisma
 
-# Копируем файлы в рабочую директорию
-COPY package*.json ./
+ENV NEXT_TELEMENTRY_DIASABLED 1
 
-# Устанавливаем зависимости
-RUN npm install
-
-# Копируем все остальные файлы
-COPY . .
-
-# Открываем порт 3000
-EXPOSE 3000
-
-# Запускаем Nginx
-CMD ["npm","run","dev"]
+CMD \
+    npx prisma generate;\
+    npx prisma migrate dev --name; \
+    npx prisma db seed; \
+    npm run dev;
 ```
 ## docker-compose.yml:
 ```rust
