@@ -1,0 +1,112 @@
+body {
+  font-family: "Roboto", sans-serif;
+  scroll-margin: 20px;
+}
+
+.chat-container {
+  box-sizing: border-box;
+  width: 437px;
+  height: 340px;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.messages-container {
+  height: 277px;
+  width: 437px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  margin-right: 10px;
+}
+
+.message {
+  margin: 1px 0 0 16px;
+}
+
+.gif-image {
+  border: 0.50px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  width: 352px;
+  height: 220px;  
+}
+
+.timestamp {
+  font-family: var(--font-family);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 131%;
+  color: #959da6;  
+}
+
+.input-container {
+  box-sizing: border-box;
+  border: 1px solid #d7dade;
+  border-radius: 0 0 4px 4px;
+  padding: 13px 16px;
+  width: 437px;
+  height: 62px;
+  position: relative;
+}
+
+.text-input {
+  box-sizing: border-box;
+  border: 1px solid #d1d4d7;
+  border-radius: 6px;
+  padding: 6px 12px;
+  width: 405px;
+  height: 36px;  
+}
+
+.gif-menu {
+  position: absolute;
+  scroll-margin-right: 10px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  background-color: #fff;
+  border: 1px solid #d0d5d9;
+  border-radius: 1px;
+  margin: 20px 15px;
+  width: 404px;
+  height: 248px;
+  z-index: 999;
+}
+
+/* Подствечиваемое /gif */
+.colored-gif-div {
+  top: 20px;
+  left: 27px;
+  position: absolute;
+  background-color: #fff;
+}
+
+.colored-gif {
+  font-family: var(--font-family);
+  /* font-weight: 600; */
+  font-size: 13px;
+  /* line-height: 131%; */
+  background: linear-gradient(135deg, #2ee6a8 5%, rgb(60, 154, 248) 34.38%, rgb(144, 51, 238) 69.27%, #f39 100%);
+  border: 2px solid #fff;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  
+}
+
+::-webkit-scrollbar {
+  width: 20px; 
+}
+
+::-webkit-scrollbar-thumb {
+  border: 7px solid rgb(255, 255, 255);
+  border-radius: 10px; 
+  background-color: #d6dee6;
+  min-height: 91px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #888888;
+}
+
+::-webkit-scrollbar-track {
+  background: white;
+  border-radius: 10px;
