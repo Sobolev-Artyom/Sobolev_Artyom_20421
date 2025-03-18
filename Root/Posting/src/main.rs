@@ -11,3 +11,4 @@ fn main() {
 
     post.approve();
     assert_eq!("I ate a salad for lunch today", post.content());
+}
