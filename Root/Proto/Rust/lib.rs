@@ -99,9 +99,20 @@ fn str_to_department(s: &str) -> i32 {
         _ => 0
     }
 }
-// fn redact_private_info(){
-//     todo!()
-// }
+fn redact_private_info(book: &mut pb::AddressBook, redact: &str) {
+    for contact in book.contacts.iter_mut() {
+        if redact == "all" {
+            // Null all fields with extra info
+            contact.name.clear();
+            contact.email.clear();
+            contact.phone.clear();
+        } else if redact == "personal" {
+            // Null only extra info
+            contact.email.clear();
+            contact.phone.clear();
+        }
+    }
+}
 fn add_person(f: &mut fs::File, name: &str, email: &str, phone: &str, phone_type: &str) {
     let mut book = read_from_db(f);
     let mut person: pb::Person;
