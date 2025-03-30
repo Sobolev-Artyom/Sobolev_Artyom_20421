@@ -1,6 +1,7 @@
 pub struct Post {
     state: Option<Box<dyn State>>,
     content: String,
+    approve_count: i32,
 }
 
 impl Post {
@@ -8,46 +9,58 @@ impl Post {
         Post {
             state: Some(Box::new(Draft {})),
             content: String::new(),
+            approve_count: 0,
         }
     }
-    //3
+
     pub fn add_text(&mut self, text: &str) {
-        if let Some(state) = self.state.as_ref() {
-            state.add_text(self, text);
+        if self.variability_check() {
+            self.content.push_str(text);
         }
     }
-    
+//
+    pub fn request_review(&mut self) {
+        if let Some(s) = self.state.take() {
+            self.state = Some(s.request_review())
+        }
+    }
+
+    pub fn approve(&mut self) {
+        self.approve_count += 1;
+        if self.approve_count == 2 {
+            self.approve_count = 0;
+            if let Some(s) = self.state.take() {
+                self.state = Some(s.approve())
+            }
+        }
+    }
+
+    pub fn reject(&mut self) {
+        if let Some(s) = self.state.take() {
+            self.state = Some(s.reject())
+        }
+    }
+
     pub fn content(&self) -> &str {
         self.state.as_ref().unwrap().content(self)
     }
-    
-    pub fn request_review(&mut self) {
-        if let Some(s) = self.state.take() {
-            self.state = Some(s.request_review());
-        }
-    }
-    
-    pub fn approve(&mut self) {
-        if let Some(s) = self.state.take() {
-            self.state = Some(s.approve());
-        }
-    }
-    //1
-    pub fn reject(&mut self) {
-        if let Some(s) = self.state.take() {
-            self.state = Some(s.reject());
-        }
+
+    pub fn variability_check(&self) -> bool {
+        self.state.as_ref().unwrap().variability_check()
     }
 }
 
 trait State {
     fn request_review(self: Box<Self>) -> Box<dyn State>;
     fn approve(self: Box<Self>) -> Box<dyn State>;
-    //1
     fn reject(self: Box<Self>) -> Box<dyn State>;
-    fn content<'a>(&self, post: &'a Post) -> &'a str;
-    fn add_text(&self, post: &mut Post, text: &str) {
-        // No default implementation
+
+    fn content<'a>(&self, _post: &'a Post) -> &'a str {
+        ""
+    }
+
+    fn variability_check(&self) -> bool {
+        false
     }
 }
 
@@ -55,52 +68,33 @@ struct Draft {}
 
 impl State for Draft {
     fn request_review(self: Box<Self>) -> Box<dyn State> {
-        Box::new(PendingReview::new())
+        Box::new(PendingReview {})
     }
-    
+
     fn approve(self: Box<Self>) -> Box<dyn State> {
         self
     }
-    //1
+
     fn reject(self: Box<Self>) -> Box<dyn State> {
         self
     }
 
-    fn add_text(&self, post: &mut Post, text: &str) {
-        post.content.push_str(text);
+    fn variability_check(&self) -> bool {
+        true
     }
 }
 
-struct PendingReview {
-    //2
-    approval_count: usize,
-}
-
-impl PendingReview {
-    fn new() -> Self {
-        PendingReview {
-            //2
-            approval_count: 0,
-        }
-    }
-}
+struct PendingReview {}
 
 impl State for PendingReview {
     fn request_review(self: Box<Self>) -> Box<dyn State> {
         self
     }
-    //2
-    fn approve(self: Box<Self>) -> Box<dyn State> {
-        let mut state = *self; // Dereference to get access to the fields
-        state.approval_count += 1;
 
-        if state.approval_count >= 2 {
-            Box::new(Published {})
-        } else {
-            Box::new(state) // Stay in PendingReview until approved twice
-        }
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        Box::new(Published {})
     }
-    //1
+
     fn reject(self: Box<Self>) -> Box<dyn State> {
         Box::new(Draft {})
     }
@@ -116,11 +110,11 @@ impl State for Published {
     fn approve(self: Box<Self>) -> Box<dyn State> {
         self
     }
-    //1
+
     fn reject(self: Box<Self>) -> Box<dyn State> {
-        self // Published posts cannot be rejected
+        self
     }
-    
+
     fn content<'a>(&self, post: &'a Post) -> &'a str {
         &post.content
     }
