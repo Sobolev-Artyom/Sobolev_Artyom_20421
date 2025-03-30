@@ -2,13 +2,13 @@ pub struct Post {
     content: String,
 }
 
-pub struct DraftPost {
+pub struct Draft {
     content: String,
 }
 
 impl Post {
-    pub fn new() -> DraftPost {
-        DraftPost {
+    pub fn new() -> Draft {
+        Draft {
             content: String::new(),
         }
     }
@@ -18,45 +18,49 @@ impl Post {
     }
 }
 
-impl DraftPost {
+impl Draft {
     pub fn add_text(&mut self, text: &str) {
         self.content.push_str(text);
     }
-    
-    pub fn request_review(self) -> PendingReviewPost {
-        PendingReviewPost {
+
+    pub fn request_review(self) -> PendingReview_1 {
+        PendingReview_1 {
             content: self.content,
-            approval_count: 0,
         }
     }
 }
 
-pub struct PendingReviewPost {
+pub struct PendingReview_1 {
     content: String,
-    approval_count: u32,
 }
 
-impl PendingReviewPost {
-    pub fn approve(self) -> (PendingReviewPost, Option<Post>) {
-        let new_count = self.approval_count + 1;
-        
-        if new_count == 2 {
-            (PendingReviewPost {
-                content: self.content,
-                approval_count: new_count,
-            }, Some(Post {
-                content: self.content,
-            }))
-        } else {
-            (PendingReviewPost {
-                content: self.content,
-                approval_count: new_count,
-            }, None)
+impl PendingReview_1 {
+    pub fn approve(self) -> PendingReview_2 {
+        PendingReview_2 {
+            content: self.content,
         }
     }
 
-    pub fn reject(self) -> DraftPost {
-        DraftPost {
+    pub fn reject(self) -> Draft {
+        Draft {
+            content: self.content,
+        }
+    }
+}
+
+pub struct PendingReview_2 {
+    content: String,
+}
+
+impl PendingReview_2 {
+    pub fn approve(self) -> Post {
+        Post {
+            content: self.content,
+        }
+    }
+
+    pub fn reject(self) -> Draft {
+        Draft {
             content: self.content,
         }
     }
