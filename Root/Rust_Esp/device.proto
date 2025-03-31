@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package device;
+
+import "google/protobuf/timestamp.proto";
+
+message DeviceData {
+    string device_id = 1;
+    int32 event_id = 2;
+    float humidity = 3;
+    float temperature = 4;
+    google.protobuf.Timestamp read_time = 5;
+}
