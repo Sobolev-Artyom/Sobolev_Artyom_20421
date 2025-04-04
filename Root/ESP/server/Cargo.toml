@@ -1,0 +1,14 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = "0.13.5" 
+prost-types = "0.13.5" 
+chrono = "0.4.40"
+postgres = { version = "0.19.10", features = ["with-chrono-0_4"] }
+
+
+[build-dependencies]
+prost-build = "0.13.5"
