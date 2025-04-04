@@ -8,3 +8,4 @@ message Proto {
     float humidity = 3;
     float temperature = 4;
     google.protobuf.Timestamp read_time = 5;
+}
