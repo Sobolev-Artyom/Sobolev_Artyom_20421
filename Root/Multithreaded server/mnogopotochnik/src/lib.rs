@@ -104,26 +104,68 @@ impl Drop for ThreadPool {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[cfg(test)] 
+mod tests { 
+    use super::*; 
+    use std::{sync::mpsc, thread, time::Duration}; 
 
-    #[test]
-    fn test_thread_pool_size() {
-        let pool = ThreadPool::new(4);
-        assert_eq!(pool.workers.len(), 4);
-    }
+    #[test] 
+    fn test_thread_pool_size() { 
+        let pool = ThreadPool::new(4); 
+        assert_eq!(pool.workers.len(), 4); 
+    } 
 
-    #[test]
-    fn test_execute_job() {
-        let pool = ThreadPool::new(2);
-        let (sender, receiver) = mpsc::channel();
+    #[test] 
+    fn test_execute_job() { 
+        let pool = ThreadPool::new(2); 
+        let (sender, receiver) = mpsc::channel(); 
 
-        pool.execute(move || {
-            sender.send(42).unwrap();
-        });
+        pool.execute(move || { 
+            sender.send(42).unwrap(); 
+        }); 
 
-        let result = receiver.recv().unwrap();
-        assert_eq!(result, 42);
-    }
+        let result = receiver.recv().unwrap(); 
+        assert_eq!(result, 42); 
+    } 
+
+    #[test] 
+    fn test_execute_multiple_jobs() { 
+        let pool = ThreadPool::new(2); 
+        let (sender, receiver) = mpsc::channel(); 
+
+        for i in 0..5 { 
+            let sender = sender.clone(); 
+            pool.execute(move || { 
+                sender.send(i).unwrap(); 
+            }); 
+        } 
+
+        let mut results = Vec::new(); 
+        for _ in 0..5 { 
+            results.push(receiver.recv().unwrap()); 
+        } 
+
+        assert_eq!(results.len(), 5); 
+    } 
+
+    #[test] 
+    fn test_pool_shutdown() { 
+        let pool = ThreadPool::new(1); 
+
+        pool.execute(|| { 
+            thread::sleep(Duration::from_millis(100)); 
+        }); 
+
+        // Dropping the pool will shut down the worker 
+        drop(pool); 
+        // If we reach this point, there were no crashes, which means the shutdown was clean 
+    } 
+
+    #[test] 
+    fn test_invalid_pool_size() { 
+        let result = std::panic::catch_unwind(|| { 
+            ThreadPool::new(0); 
+        }); 
+        assert!(result.is_err()); 
+    } 
 }
