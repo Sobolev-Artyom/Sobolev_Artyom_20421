@@ -5,8 +5,29 @@ use std::{
     thread,
     time::Duration,
 };
+use rayon::ThreadPoolBuilder;
 
-use mnogopotochnik::ThreadPool;
+pub struct ThreadPool {
+    pool: rayon::ThreadPool,
+}
+
+impl ThreadPool {
+    pub fn new(size: usize) -> ThreadPool {
+        let pool = ThreadPoolBuilder::new()
+            .num_threads(size)
+            .build()
+            .expect("Failed to create thread pool");
+
+        ThreadPool { pool }
+    }
+
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.pool.spawn(f);
+    }
+}
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
@@ -27,16 +48,23 @@ fn main() {
             println!("Факториал {} равен {}", number, result);
         });
     }
-    for stream in listener.incoming().take(2) {
-        let stream = stream.unwrap();
 
-        pool.execute(|| {
-            handle_connection(stream);
-        });
+    // Основной цикл для обработки входящих соединений
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                pool.execute(|| {
+                    handle_connection(stream);
+                });
+            }
+            Err(e) => {
+                eprintln!("Ошибка подключения: {}", e);
+                continue;
+            }
+        }
     }
 
     println!("Shutting down.");
-    std::thread::sleep(std::time::Duration::from_secs(2));
 }
 
 // Функция для вычисления факториала
