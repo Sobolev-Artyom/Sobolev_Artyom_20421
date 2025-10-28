@@ -1,0 +1,66 @@
+{
+  "environment_info": {
+    "timestamp": "2025-10-28T16:52:09.619821",
+    "python_version": "3.8+",
+    "torch_version": "2.8.0+cpu",
+    "torchvision_version": "0.23.0+cpu",
+    "numpy_version": "2.2.6",
+    "sklearn_version": "1.2+",
+    "cuda_available": false,
+    "cuda_version": "N/A",
+    "device": "cpu"
+  },
+  "timestamp": "2025-10-28T17:04:59.650038",
+  "total_experiments": 3,
+  "successful_experiments": 3,
+  "experiments_summary": {
+    "cvae_emb5": {
+      "label_embedding_dim": 5,
+      "latent_dim": 20,
+      "best_val_elbo": 234.4561730685764,
+      "total_training_time": 244.65947318077087,
+      "test_metrics": {
+        "elbo": 236.8838887207031,
+        "bce": 224.5917692138672,
+        "kld": 12.292119786071778,
+        "mse": 0.0,
+        "psnr": 0.0
+      },
+      "final_train_elbo": 235.44644937193627,
+      "final_val_elbo": 234.4561730685764,
+      "log_file": "logs/cvae_emb5_20251028_165625.json"
+    },
+    "cvae_emb10": {
+      "label_embedding_dim": 10,
+      "latent_dim": 20,
+      "best_val_elbo": 234.5264958767361,
+      "total_training_time": 245.67546367645264,
+      "test_metrics": {
+        "elbo": 237.40619260253905,
+        "bce": 225.45504479980468,
+        "kld": 11.951148783874512,
+        "mse": 0.0,
+        "psnr": 0.0
+      },
+      "final_train_elbo": 235.2293841528799,
+      "final_val_elbo": 234.98447048611112,
+      "log_file": "logs/cvae_emb10_20251028_170041.json"
+    },
+    "cvae_emb20": {
+      "label_embedding_dim": 20,
+      "latent_dim": 20,
+      "best_val_elbo": 234.4295439453125,
+      "total_training_time": 248.0307102203369,
+      "test_metrics": {
+        "elbo": 236.95809724121094,
+        "bce": 225.07121264648438,
+        "kld": 11.886886170959473,
+        "mse": 0.0,
+        "psnr": 0.0
+      },
+      "final_train_elbo": 235.25640171185663,
+      "final_val_elbo": 234.5758095703125,
+      "log_file": "logs/cvae_emb20_20251028_170459.json"
+    }
+  }
+}
