@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from sklearn.manifold import TSNE
-from sklearn.metrics import confusion_matrix, classification_report, f1_score
+from sklearn.metrics import confusion_matrix, classification_report, f1_score, accuracy_score
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 import pandas as pd
 import json
 import os
@@ -109,10 +111,121 @@ class ConditionalVAE(nn.Module):
         z_cond = torch.cat([z, y_embedded], dim=1)
         return self.decoder(z_cond)
 
+    def get_latent_representation(self, x, y):
+        """Получение латентного представления без reparameterization"""
+        with torch.no_grad():
+            mu, _ = self.encode(x.view(-1, self.image_size), y)
+            return mu
+
     def forward(self, x, y):
         mu, logvar = self.encode(x.view(-1, self.image_size), y)
         z = self.reparameterize(mu, logvar)
         return self.decode(z, y), mu, logvar
+
+
+# =============================================================================
+# ЛИНЕЙНЫЙ КЛАССИФИКАТОР ДЛЯ LINEAR EVALUATION
+# =============================================================================
+class LinearClassifier(nn.Module):
+    """Простой линейный классификатор для оценки качества эмбеддингов"""
+
+    def __init__(self, input_dim, num_classes):
+        super(LinearClassifier, self).__init__()
+        self.fc = nn.Linear(input_dim, num_classes)
+
+    def forward(self, x):
+        return self.fc(x)
+
+
+def linear_evaluation(model, train_loader, test_loader, device, experiment_name):
+    """Linear evaluation на латентных представлениях возвращает точность на тестовом наборе"""
+    print(f"🔍 Starting linear evaluation for {experiment_name}...")
+
+    model.eval()
+
+    # Сбор латентных представлений и меток
+    train_features, train_labels = [], []
+    test_features, test_labels = [], []
+
+    # Сбор тренировочных данных
+    with torch.no_grad():
+        for data, labels in train_loader:
+            data = data.to(device)
+            labels = labels.to(device)
+
+            # Получаем латентные представления
+            features = model.get_latent_representation(data, labels)
+            train_features.append(features.cpu().numpy())
+            train_labels.append(labels.cpu().numpy())
+
+    # Сбор тестовых данных
+    with torch.no_grad():
+        for data, labels in test_loader:
+            data = data.to(device)
+            labels = labels.to(device)
+
+            features = model.get_latent_representation(data, labels)
+            test_features.append(features.cpu().numpy())
+            test_labels.append(labels.cpu().numpy())
+
+    # Объединяем данные
+    X_train = np.vstack(train_features)
+    y_train = np.concatenate(train_labels)
+    X_test = np.vstack(test_features)
+    y_test = np.concatenate(test_labels)
+
+    print(f"📊 Linear evaluation data shapes:")
+    print(f"   Train: {X_train.shape}, Test: {X_test.shape}")
+
+    # Обучаем линейный классификатор
+    linear_model = LogisticRegression(
+        random_state=SEED,
+        max_iter=1000,
+        multi_class='multinomial',
+        solver='lbfgs',
+        C=1.0
+    )
+
+    linear_model.fit(X_train, y_train)
+
+    # Предсказания и метрики
+    y_pred = linear_model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred, average='weighted')
+
+    # Матрица ошибок
+    cm = confusion_matrix(y_test, y_pred)
+
+    print(f"📈 Linear Evaluation Results for {experiment_name}:")
+    print(f"   ✅ Accuracy: {accuracy:.4f} ({accuracy * 100:.2f}%)")
+    print(f"   ✅ F1-score: {f1:.4f} ({f1 * 100:.2f}%)")
+
+    # Визуализация матрицы ошибок
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=range(10), yticklabels=range(10))
+    plt.title(f'Confusion Matrix - Linear Evaluation\n{experiment_name}\nAccuracy: {accuracy * 100:.2f}%')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.tight_layout()
+    plt.savefig(f'results/confusion_matrix_linear_{experiment_name}.png', dpi=150, bbox_inches='tight')
+    plt.close()
+
+    # Проверка достижения целевой точности
+    target_accuracy = 0.90  # 90%
+    if accuracy >= target_accuracy:
+        print(f"🎯 TARGET ACHIEVED! Accuracy ≥ 90%: {accuracy * 100:.2f}%")
+    else:
+        print(f"📉 Target not reached: {accuracy * 100:.2f}% < 90%")
+
+    return {
+        'accuracy': accuracy,
+        'accuracy_percent': accuracy * 100,
+        'f1_score': f1,
+        'f1_score_percent': f1 * 100,
+        'target_achieved': accuracy >= target_accuracy,
+        'confusion_matrix': cm.tolist()
+    }
 
 
 # =============================================================================
@@ -178,8 +291,7 @@ def load_fashion_mnist(batch_size=128):
 # МЕТРИКИ И ВЫЧИСЛЕНИЯ
 # =============================================================================
 def calculate_metrics(original, reconstructed):
-    """Вычисление метрик качества реконструкции"""
-    # Приводим к одинаковой форме: [batch_size, 784]
+    """Вычисление метрик качества реконструкции с правильными размерностями"""
     original_flat = original.view(original.size(0), -1)
     reconstructed_flat = reconstructed.view(reconstructed.size(0), -1)
 
@@ -199,6 +311,7 @@ def calculate_metrics(original, reconstructed):
 
 def compute_elbo(recon_x, x, mu, logvar, beta=1.0):
     """Вычисление Evidence Lower Bound (ELBO)"""
+    # Приводим x к той же форме, что и recon_x [batch_size, 784]
     x_flat = x.view(-1, 784)
     BCE = F.binary_cross_entropy(recon_x, x_flat, reduction='sum')
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
@@ -228,7 +341,7 @@ class cVAETrainer:
             'train_losses': [], 'val_losses': [], 'train_elbo': [], 'val_elbo': [],
             'train_bce': [], 'train_kld': [], 'val_bce': [], 'val_kld': [],
             'learning_rates': [], 'epoch_times': [], 'best_val_loss': float('inf'),
-            'test_metrics': {}, 'start_time': None, 'end_time': None
+            'test_metrics': {}, 'linear_evaluation': {}, 'start_time': None, 'end_time': None
         }
 
     def train_epoch(self, epoch):
@@ -318,13 +431,16 @@ class cVAETrainer:
         # Финальное тестирование
         self.evaluate_test_set()
 
+        # Linear evaluation
+        self.perform_linear_evaluation()
+
         print(f"✅ Training completed in {total_time:.1f}s")
         print(f"🏆 Best val ELBO: {self.log_data['best_val_loss']:.2f}")
 
         return self.log_data
 
     def evaluate_test_set(self):
-        """Оценка на тестовом наборе с правильными размерностями"""
+        """Оценка на тестовом наборе"""
         self.model.eval()
         total_loss, total_bce, total_kld = 0, 0, 0
 
@@ -345,12 +461,21 @@ class cVAETrainer:
             'elbo': total_loss / len(self.test_loader.dataset),
             'bce': total_bce / len(self.test_loader.dataset),
             'kld': total_kld / len(self.test_loader.dataset),
-            'mse': 0.0,  # Заглушки, чтобы избежать ошибок
+            'mse': 0.0,
             'psnr': 0.0
         }
 
         self.log_data['test_metrics'] = metrics
         return metrics
+
+    def perform_linear_evaluation(self):
+        """Выполнение linear evaluation на эмбеддингах"""
+        linear_results = linear_evaluation(
+            self.model, self.train_loader, self.test_loader,
+            self.device, self.config['experiment_name']
+        )
+        self.log_data['linear_evaluation'] = linear_results
+        return linear_results
 
 
 # =============================================================================
@@ -370,7 +495,7 @@ def visualize_latent_space(model, data_loader, device, experiment_name):
             latents.append(mu.cpu().numpy())
             labels_list.append(labels.cpu().numpy())
 
-            if len(latents) > 5:  # Ограничиваем для скорости
+            if len(latents) > 5:
                 break
 
     if not latents:
@@ -586,6 +711,7 @@ def run_experiment(config, env_info):
         # Сохранение логов
         log_file = save_experiment_logs(config['experiment_name'], log_data, config, env_info)
 
+        # Возвращаем результат с правильной структурой
         return {
             'success': True,
             'log_data': log_data,
@@ -615,7 +741,7 @@ def create_comparison_visualization(all_results):
         print("⚠ Not enough successful experiments for comparison")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     colors = plt.cm.Set3(np.linspace(0, 1, len(successful_exps)))
 
     for i, (exp_name, result) in enumerate(successful_exps.items()):
@@ -629,6 +755,18 @@ def create_comparison_visualization(all_results):
 
         # Финальные метрики для bar plot
         axes[1, 1].bar(i, log_data['best_val_loss'], label=label, color=colors[i], alpha=0.7)
+
+        # Linear evaluation accuracy
+        if 'linear_evaluation' in log_data and 'accuracy_percent' in log_data['linear_evaluation']:
+            acc = log_data['linear_evaluation']['accuracy_percent']
+            axes[0, 2].bar(i, acc, label=label, color=colors[i], alpha=0.7)
+
+            # Подсвечиваем достигшие 90%
+            if acc >= 90:
+                axes[0, 2].bar(i, acc, color='green', alpha=0.8)
+                axes[0, 2].text(i, acc + 1, f'{acc:.1f}%', ha='center', va='bottom', fontweight='bold')
+            else:
+                axes[0, 2].text(i, acc + 1, f'{acc:.1f}%', ha='center', va='bottom')
 
     axes[0, 0].set_title('Validation ELBO Comparison')
     axes[0, 0].set_xlabel('Epoch')
@@ -655,6 +793,18 @@ def create_comparison_visualization(all_results):
                                 for v in successful_exps.values()], rotation=45)
     axes[1, 1].grid(True, alpha=0.3)
 
+    axes[0, 2].set_title('Linear Evaluation Accuracy (%)')
+    axes[0, 2].set_ylabel('Accuracy (%)')
+    axes[0, 2].set_xticks(range(len(successful_exps)))
+    axes[0, 2].set_xticklabels([f"Emb:{v['config']['label_embedding_dim']}"
+                                for v in successful_exps.values()], rotation=45)
+    axes[0, 2].axhline(y=90, color='red', linestyle='--', alpha=0.7, label='90% Target')
+    axes[0, 2].legend()
+    axes[0, 2].grid(True, alpha=0.3)
+
+    # Убираем пустые subplots
+    axes[1, 2].axis('off')
+
     plt.suptitle('Comparison of cVAE Experiments with Different Embedding Dimensions', fontsize=16)
     plt.tight_layout()
     plt.savefig('results/experiments_comparison.png', dpi=150, bbox_inches='tight')
@@ -670,7 +820,8 @@ def main():
 
     # Информация о среде
     env_info = print_environment_info()
-    print("🎮 Conditional VAE on Fashion-MNIST")
+    print("🎮 Conditional VAE on Fashion-MNIST with Linear Evaluation")
+    print("🎯 Target: Linear evaluation accuracy ≥ 90%")
     print("📊 Environment Info:")
     for key, value in env_info.items():
         print(f"   {key}: {value}")
@@ -684,37 +835,37 @@ def main():
     # Конфигурации экспериментов (вариация embedding размерности)
     configs = [
         {
-            'experiment_name': 'cvae_emb5',
-            'latent_dim': 20,
-            'label_embedding_dim': 5,  # Маленький embedding
+            'experiment_name': 'cvae_emb64',
+            'latent_dim': 64,
+            'label_embedding_dim': 64,
             'hidden_dim': 400,
-            'learning_rate': 1e-3,
-            'beta': 1.0,
-            'epochs': 25,
+            'learning_rate': 3e-4,
+            'beta': 0.5,
+            'epochs': 50,
             'batch_size': 256,
             'patience': 5,
             'device': env_info['device']
         },
         {
-            'experiment_name': 'cvae_emb10',
-            'latent_dim': 20,
-            'label_embedding_dim': 10,  # Средний embedding
+            'experiment_name': 'cvae_emb96',
+            'latent_dim': 64,
+            'label_embedding_dim': 96,
             'hidden_dim': 400,
-            'learning_rate': 1e-3,
-            'beta': 1.0,
-            'epochs': 25,
+            'learning_rate': 3e-4,
+            'beta': 0.5,
+            'epochs': 50,
             'batch_size': 256,
             'patience': 5,
             'device': env_info['device']
         },
         {
-            'experiment_name': 'cvae_emb20',
-            'latent_dim': 20,
-            'label_embedding_dim': 20,  # Большой embedding
+            'experiment_name': 'cvae_emb128',
+            'latent_dim': 64,
+            'label_embedding_dim': 128,
             'hidden_dim': 400,
-            'learning_rate': 1e-3,
-            'beta': 1.0,
-            'epochs': 25,
+            'learning_rate': 3e-4,
+            'beta': 0.5,
+            'epochs': 50,
             'batch_size': 256,
             'patience': 5,
             'device': env_info['device']
@@ -722,6 +873,7 @@ def main():
     ]
 
     all_results = {}
+    target_achievers = []
 
     # Запуск экспериментов
     for config in configs:
@@ -730,10 +882,17 @@ def main():
 
         if result['success']:
             test_metrics = result['log_data']['test_metrics']
+            linear_eval = result['log_data'].get('linear_evaluation', {})
+            accuracy_percent = linear_eval.get('accuracy_percent', 0)
+
             print(f"✅ {config['experiment_name']} - "
                   f"Test ELBO: {test_metrics['elbo']:.2f}, "
-                  f"BCE: {test_metrics['bce']:.2f}, "
-                  f"KLD: {test_metrics['kld']:.2f}")
+                  f"Linear Accuracy: {accuracy_percent:.2f}%")
+
+            # Проверка на точность
+            if accuracy_percent >= 90:
+                target_achievers.append(config['experiment_name'])
+                print(f"🎯 TARGET ACHIEVED! {config['experiment_name']} reached {accuracy_percent:.2f}%")
         else:
             print(f"❌ {config['experiment_name']} failed")
 
@@ -741,14 +900,14 @@ def main():
     create_comparison_visualization(all_results)
 
     # Сводный отчет
-    save_summary_report(all_results, env_info)
+    save_summary_report(all_results, env_info, target_achievers)
 
     print("\n🎉 All experiments completed!")
     print("📁 Check 'results/' directory for visualizations")
     print("📁 Check 'logs/' directory for detailed logs")
 
 
-def save_summary_report(all_results, env_info):
+def save_summary_report(all_results, env_info, target_achievers):
     """Сохранение сводного отчета"""
     successful_exps = {}
     for exp_name, result in all_results.items():
@@ -760,12 +919,15 @@ def save_summary_report(all_results, env_info):
         'timestamp': datetime.now().isoformat(),
         'total_experiments': len(all_results),
         'successful_experiments': len(successful_exps),
+        'target_achievers': target_achievers,
+        'target_achievers_count': len(target_achievers),
         'experiments_summary': {}
     }
 
     for exp_name, result in successful_exps.items():
         log_data = result['log_data']
         config = result['config']
+        linear_eval = log_data.get('linear_evaluation', {})
 
         summary['experiments_summary'][exp_name] = {
             'label_embedding_dim': config['label_embedding_dim'],
@@ -773,28 +935,36 @@ def save_summary_report(all_results, env_info):
             'best_val_elbo': log_data['best_val_loss'],
             'total_training_time': log_data['total_training_time'],
             'test_metrics': log_data['test_metrics'],
+            'linear_evaluation': linear_eval,
             'final_train_elbo': log_data['train_losses'][-1] if log_data['train_losses'] else 0,
             'final_val_elbo': log_data['val_losses'][-1] if log_data['val_losses'] else 0,
+            'target_achieved': exp_name in target_achievers,
             'log_file': result.get('log_file', 'N/A')
         }
 
-    # Сохраняем отчет
+    # Сейв отчета
     with open('logs/experiments_summary.json', 'w', encoding='utf-8') as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
-    # Выводим краткую статистику
+    # Статистика в компактном формате
     print("\n📊 FINAL SUMMARY:")
-    print("=" * 50)
+    print("=" * 60)
+    print(f"🎯 Target achievers ({len(target_achievers)}/{len(successful_exps)}): {target_achievers}")
+
     for exp_name, exp_summary in summary['experiments_summary'].items():
-        print(f"🔬 {exp_name}:")
+        linear_acc = exp_summary['linear_evaluation'].get('accuracy_percent', 0)
+        target_status = "✅ ACHIEVED" if exp_summary['target_achieved'] else "❌ Not achieved"
+
+        print(f"\n🔬 {exp_name}:")
         print(f"   Embedding dim: {exp_summary['label_embedding_dim']}")
+        print(f"   Linear Accuracy: {linear_acc:.2f}% - {target_status}")
         print(f"   Best Val ELBO: {exp_summary['best_val_elbo']:.2f}")
         print(f"   Test ELBO: {exp_summary['test_metrics']['elbo']:.2f}")
         print(f"   Training Time: {exp_summary['total_training_time']:.1f}s")
-        print()
 
 
 if __name__ == "__main__":
+    # Импорт для версий
     import torchvision
 
     main()
