@@ -55,8 +55,8 @@ torch.backends.cudnn.benchmark = False
 # АРХИТЕКТУРА cVAE
 # =============================================================================
 class ConditionalVAE(nn.Module):
-    def __init__(self, image_size=784, hidden_dim=400, latent_dim=20,
-                 num_classes=10, label_embedding_dim=10):
+    def __init__(self, image_size=784, hidden_dim=400, latent_dim=64,
+                 num_classes=10, label_embedding_dim=64):
         super(ConditionalVAE, self).__init__()
 
         self.image_size = image_size
@@ -422,7 +422,7 @@ class cVAETrainer:
 
             print(f'Epoch {epoch:3d}/{self.config["epochs"]}: '
                   f'Train ELBO: {train_loss:8.2f}, Val ELBO: {val_loss:8.2f}, '
-                  f'LR: {current_lr:.2e}, Time: {epoch_time:5.1f}s')
+                  f'LR: {current_lr:.2e}, BCE: {val_bce:8.2f}, KLD: {val_kld:8.2f}, Time: {epoch_time:5.1f}s')
 
         total_time = time.time() - start_time
         self.log_data['end_time'] = datetime.now().isoformat()
@@ -960,6 +960,8 @@ def save_summary_report(all_results, env_info, target_achievers):
         print(f"   Linear Accuracy: {linear_acc:.2f}% - {target_status}")
         print(f"   Best Val ELBO: {exp_summary['best_val_elbo']:.2f}")
         print(f"   Test ELBO: {exp_summary['test_metrics']['elbo']:.2f}")
+        print(f"   Test BCE: {exp_summary['test_metrics']['bce']:.2f}")
+        print(f"   Test KLD: {exp_summary['test_metrics']['kld']:.2f}")
         print(f"   Training Time: {exp_summary['total_training_time']:.1f}s")
 
 
